@@ -149,3 +149,15 @@ class UserActivity(Base):
     ip_address:    Mapped[Optional[str]] = mapped_column(INET)
     user_agent:    Mapped[Optional[str]] = mapped_column(Text)
     created_at:    Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+# ─── Feature flags (kill-switch + future flags) ──────────────────────────────
+class FeatureFlag(Base):
+    __tablename__ = "feature_flags"
+    __table_args__ = {"schema": "core"}
+
+    code:        Mapped[str]  = mapped_column(String(64), primary_key=True)
+    enabled:     Mapped[bool] = mapped_column(Boolean, nullable=False)
+    description: Mapped[Optional[str]] = mapped_column(Text)
+    updated_by:  Mapped[Optional[UUID]] = mapped_column(PG_UUID(as_uuid=True), ForeignKey("core.users.id"))
+    updated_at:  Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

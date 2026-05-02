@@ -310,6 +310,35 @@ def get_module(
 access_router = APIRouter(prefix="/api/access", tags=["access"])
 
 
+@access_router.get("/available-modules", response_model=list[ModuleOut])
+def list_available_modules(
+    db:   Annotated[Session, Depends(db_session)],
+    user: Annotated[User, Depends(get_current_user)],
+):
+    """List enabled modules the user does NOT already have access to.
+
+    Backs the access-request form's module dropdown. Excludes modules the
+    user already has an active grant for, so they can only request things
+    they don't yet have.
+    """
+    owned = (
+        select(UserModuleAccess.module_id)
+        .where(
+            UserModuleAccess.user_id == user.id,
+            UserModuleAccess.revoked_at.is_(None),
+        )
+    )
+    rows = db.scalars(
+        select(Module)
+        .where(
+            Module.is_enabled.is_(True),
+            Module.id.notin_(owned),
+        )
+        .order_by(Module.sort_order)
+    ).all()
+    return list(rows)
+
+
 @access_router.post("/request", response_model=AccessRequestOut, status_code=201)
 def request_access(
     payload: AccessRequestCreate,

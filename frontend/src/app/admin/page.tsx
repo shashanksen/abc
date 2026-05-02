@@ -7,6 +7,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { adminApi, modulesApi, type AccessRequest, type ModuleSummary } from '@/lib/coreApi';
 import { getDemoAccessRequests, getDemoAdminUsers, getDemoModuleName, getDemoModules, isDemoUser } from '@/lib/demoData';
 import { ApiError } from '@/lib/errors';
+import { AgentOpsSection, ActivityFeedSection } from './AdminOpsSections';
 
 export default function AdminPage() {
   return (
@@ -172,7 +173,7 @@ function Admin() {
         )}
       </section>
 
-      <section>
+      <section style={{ marginBottom: '40px' }}>
         <div className="page-header" style={{ marginBottom: '16px' }}>
           <div>
             <div className="section-label" style={{ marginBottom: '8px' }}>Users</div>
@@ -204,6 +205,14 @@ function Admin() {
           </table>
         </div>
       </section>
+
+      {/* New: agent operations + activity feed */}
+      {!demoSession && (
+        <>
+          <AgentOpsSection />
+          <ActivityFeedSection />
+        </>
+      )}
     </>
   );
 }

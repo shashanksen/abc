@@ -5,11 +5,15 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 
 from app.admin.admin import access_router, admin_router, modules_router
+from app.admin.admin_ops import admin_ops_router
 from app.auth.auth import router as auth_router
 from app.core.config import get_settings
 from app.core.errors import AppError
+from app.modules.agent.router import router as agent_router, limiter
 from app.modules.dq.router import router as dq_router
 
 
@@ -21,19 +25,26 @@ logging.basicConfig(level=logging.INFO,
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     settings = get_settings()
-    logger.info("[startup] env=%s db=%s", settings.app_env, settings.database_url.split("@")[-1])
+    # Don't log the DB URL (contains the password). Log just the env name.
+    logger.info("[startup] env=%s", settings.app_env)
     yield
     logger.info("[shutdown]")
 
 
 app = FastAPI(
     title="CDP Platform API",
-    version="0.1.0",
+    version="0.2.0",
     lifespan=lifespan,
     docs_url="/api/docs",
     redoc_url="/api/redoc",
     openapi_url="/api/openapi.json",
 )
+
+# ─── Rate limiter (SlowAPI) ──────────────────────────────────────────────────
+# Imported from app.modules.agent.router so it's the same instance used by the
+# @limiter.limit decorator on the agent endpoint.
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # ─── CORS ─────────────────────────────────────────────────────────────────────
 settings = get_settings()
@@ -78,4 +89,6 @@ app.include_router(auth_router)
 app.include_router(modules_router)
 app.include_router(access_router)
 app.include_router(admin_router)
+app.include_router(admin_ops_router)
 app.include_router(dq_router)
+app.include_router(agent_router)

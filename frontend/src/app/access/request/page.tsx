@@ -21,7 +21,14 @@ interface ModuleDetail {
 }
 
 class _LocalApi extends BaseApiClient {
-  listModules() { return this.get<{ id: string; code: string; name: string }[]>('/modules'); }
+  /**
+   * Lists modules the user does NOT already have access to.
+   * Backed by GET /api/access/available-modules — purpose-built for the
+   * request-access dropdown.
+   */
+  listAvailableModules() {
+    return this.get<{ id: string; code: string; name: string }[]>('/access/available-modules');
+  }
   detail(id: string) { return this.get<ModuleDetail>(`/modules/${id}`); }
 }
 const localApi = new _LocalApi();
@@ -55,12 +62,7 @@ function RequestAccessForm() {
       return;
     }
 
-    // List ALL modules (not just user's) — we need to know what to request
-    // The /modules endpoint returns only user's. For an unauth-aware list, you'd
-    // add a dedicated endpoint. For now we hit the same one which works for admins,
-    // and shows whatever the user already has access to. We'll list everything
-    // through detail endpoint by hitting one — but here we just need names.
-    localApi.listModules().then(setModules).catch(() => setModules([]));
+    localApi.listAvailableModules().then(setModules).catch(() => setModules([]));
   }, [demoSession]);
 
   useEffect(() => {

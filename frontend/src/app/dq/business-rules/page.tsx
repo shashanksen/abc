@@ -1,58 +1,102 @@
-import { WorkflowActionGroup } from '@/components/dq/WorkflowActionGroup';
+'use client';
+
+/**
+ * Business rules page — wired to the real backend and the AI generate flow.
+ *
+ * Differences from the earlier mock-data version:
+ *   - List comes from /api/dq/business-rules (not mockData.businessRules)
+ *   - "New business rule" opens a modal with an AI generate button
+ *   - On save: POST /api/dq/business-rules; on success the list refreshes
+ *
+ * The mock data still exists in mockData.ts and is used by other DQ pages
+ * (dimensions, ede-mappings, technical-rules) — we don't break them.
+ */
+import { useEffect, useState } from 'react';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { StatusBadge } from '@/components/ui/StatusBadge';
-import { businessRules } from '@/modules/dq/mockData';
+import { dqApi, type BusinessRule } from '@/modules/dq/api';
+import { ApiError } from '@/lib/errors';
+import { CreateBusinessRuleModal } from './CreateBusinessRuleModal';
 
 export default function BusinessRulesPage() {
+  const [rules, setRules]     = useState<BusinessRule[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError]     = useState<string | null>(null);
+  const [showCreate, setShowCreate] = useState(false);
+
+  const load = () => {
+    setLoading(true);
+    setError(null);
+    dqApi.listBusinessRules()
+      .then((rows) => { setRules(rows); setLoading(false); })
+      .catch((e) => {
+        setLoading(false);
+        setError(e instanceof ApiError ? e.userMessage() : 'Failed to load business rules');
+      });
+  };
+
+  useEffect(load, []);
+
   return (
     <div className="page-stack">
       <SectionHeader
-        title={`Business Rules (${businessRules.length})`}
+        title={loading ? 'Business rules' : `Business rules (${rules.length})`}
         description="Analysts generate business rules from mapped EDEs, then route them through BU and Central CDO approvals."
-        actions={<button type="button" className="btn btn-primary">New business rule</button>}
+        actions={
+          <button type="button" className="btn btn-primary" onClick={() => setShowCreate(true)}>
+            New business rule
+          </button>
+        }
       />
 
-      <div className="card table-scroll">
-        <table>
-          <thead>
-            <tr>
-              <th>EDE ID</th>
-              <th>EDE Name</th>
-              <th>DQ Dimension</th>
-              <th>Business Rule Design</th>
-              <th>Status</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {businessRules.map((rule) => (
-              <tr key={rule.id}>
-                <td className="mono">{rule.edeId}</td>
-                <td>{rule.edeName}</td>
-                <td>{rule.dqDimension}</td>
-                <td>
-                  <div className="table-cell-stack">
-                    <span><strong>Input:</strong> {rule.input}</span>
-                    <span><strong>Objective:</strong> {rule.objective}</span>
-                    <span><strong>Definition:</strong> {rule.ruleDefinition}</span>
-                    <span><strong>Guidelines:</strong> {rule.guidelines}</span>
-                    <span><strong>Acceptance:</strong> {rule.acceptanceCriteria}</span>
-                  </div>
-                </td>
-                <td>
-                  <div className="table-cell-stack">
-                    <StatusBadge status={rule.status} />
-                    <span className="surface-row-meta">Owner: {rule.owner}</span>
-                  </div>
-                </td>
-                <td>
-                  <WorkflowActionGroup actions={rule.actions} />
-                </td>
+      {error && <div className="alert alert-error">{error}</div>}
+
+      {loading ? (
+        <div className="content-card card-body">
+          <p className="muted">Loading…</p>
+        </div>
+      ) : rules.length === 0 ? (
+        <div className="content-card card-body">
+          <p className="muted">
+            No business rules yet. Click <strong>New business rule</strong> to draft one — you can use the AI helper to generate the rule text from a short description.
+          </p>
+        </div>
+      ) : (
+        <div className="card table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Code</th>
+                <th>EDE mapping</th>
+                <th>Rule text</th>
+                <th>Status</th>
+                <th>Version</th>
+                <th>Updated</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {rules.map((rule) => (
+                <tr key={rule.id}>
+                  <td className="mono">{rule.code}</td>
+                  <td>{rule.ede_mapping || '-'}</td>
+                  <td style={{ maxWidth: 480 }}>
+                    <div style={{ whiteSpace: 'pre-wrap' }}>{rule.rule_text}</div>
+                  </td>
+                  <td><StatusBadge status={rule.status} /></td>
+                  <td>{rule.version}</td>
+                  <td>{new Date(rule.updated_at).toLocaleString()}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <CreateBusinessRuleModal
+        open={showCreate}
+        onClose={() => setShowCreate(false)}
+        onCreated={() => { setShowCreate(false); load(); }}
+      />
     </div>
   );
 }

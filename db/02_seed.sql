@@ -32,7 +32,7 @@ ON CONFLICT (module_id, code) DO NOTHING;
 -- ─── Default admin user ──────────────────────────────────────────────────────
 -- Password: AdminPass!2026 (bcrypt hash) — CHANGE THIS IN PRODUCTION
 INSERT INTO core.users (email, full_name, password_hash, is_admin) VALUES
-  ('admin@cdp.local', 'CDP Admin',
+  ('admin@cdp.example', 'CDP Admin',
    '$2b$12$LQ3xXKKVgRtMKPxN8FqHa.6E/xRYn9aTjC4mOe9fPQXpNNRyo8oXG',
    TRUE)
 ON CONFLICT (email) DO NOTHING;

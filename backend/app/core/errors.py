@@ -29,6 +29,8 @@ class ErrorDomain(str, Enum):
     AUDIT       = "AUD"
     DQ_RULE     = "DQR"
     DQ_DIM      = "DQD"
+    AGENT       = "AGT"
+    SECURITY    = "SEC"
     INTERNAL    = "SYS"
     VALIDATION  = "VAL"
 
@@ -42,8 +44,6 @@ class ErrorSpec:
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Catalog — every known error registered here.
-# Operations / monitoring teams can grep this file to understand any code seen
-# in logs or returned by the API.
 # ═══════════════════════════════════════════════════════════════════════════════
 ERROR_CATALOG: dict[str, ErrorSpec] = {
 
@@ -54,6 +54,8 @@ ERROR_CATALOG: dict[str, ErrorSpec] = {
     "CDP-AUT-0004": ErrorSpec("CDP-AUT-0004", "User account disabled",                    403),
     "CDP-AUT-0005": ErrorSpec("CDP-AUT-0005", "Email already registered",                 409),
     "CDP-AUT-0006": ErrorSpec("CDP-AUT-0006", "Authentication required",                  401),
+    "CDP-AUT-0007": ErrorSpec("CDP-AUT-0007", "Invalid agent callback token",             401),
+    "CDP-AUT-0008": ErrorSpec("CDP-AUT-0008", "Agent callback token scope mismatch",      403),
 
     # ── User ──────────────────────────────────────────────────────────────────
     "CDP-USR-0010": ErrorSpec("CDP-USR-0010", "User not found",                           404),
@@ -85,6 +87,24 @@ ERROR_CATALOG: dict[str, ErrorSpec] = {
     # ── Validation ────────────────────────────────────────────────────────────
     "CDP-VAL-0060": ErrorSpec("CDP-VAL-0060", "Request payload invalid",                  400),
 
+    # ── Agent (LLM via A2A) ───────────────────────────────────────────────────
+    "CDP-AGT-0070": ErrorSpec("CDP-AGT-0070", "Agent unavailable",                        503),
+    "CDP-AGT-0071": ErrorSpec("CDP-AGT-0071", "Agent rejected credentials",               502),
+    "CDP-AGT-0072": ErrorSpec("CDP-AGT-0072", "Agent returned invalid response",          502),
+    "CDP-AGT-0073": ErrorSpec("CDP-AGT-0073", "Agent skill failed",                       422),
+    "CDP-AGT-0074": ErrorSpec("CDP-AGT-0074", "Agent request timed out",                  504),
+    "CDP-AGT-0075": ErrorSpec("CDP-AGT-0075", "Agent task not found",                     404),
+    "CDP-AGT-0076": ErrorSpec("CDP-AGT-0076", "Agent input invalid",                      400),
+    "CDP-AGT-0077": ErrorSpec("CDP-AGT-0077", "Daily AI usage budget exceeded",           429),
+    "CDP-AGT-0078": ErrorSpec("CDP-AGT-0078", "Agent rate limit exceeded",                429),
+    "CDP-AGT-0079": ErrorSpec("CDP-AGT-0079", "Agent graph state error",                  500),
+    "CDP-AGT-0080": ErrorSpec("CDP-AGT-0080", "Agent functionality disabled by administrator", 503),
+
+    # ── Security policy ───────────────────────────────────────────────────────
+    "CDP-SEC-0100": ErrorSpec("CDP-SEC-0100", "Request rejected by content policy",       422),
+    "CDP-SEC-0101": ErrorSpec("CDP-SEC-0101", "Generated output rejected",                422),
+    "CDP-SEC-0102": ErrorSpec("CDP-SEC-0102", "Tool input rejected",                      422),
+
     # ── System ────────────────────────────────────────────────────────────────
     "CDP-SYS-0090": ErrorSpec("CDP-SYS-0090", "Database error",                           500),
     "CDP-SYS-0091": ErrorSpec("CDP-SYS-0091", "Unexpected internal error",                500),
@@ -101,7 +121,6 @@ class AppError(Exception):
     def __init__(self, code: str, *, detail: str | None = None, context: dict[str, Any] | None = None):
         spec = ERROR_CATALOG.get(code)
         if spec is None:
-            # Unregistered code — coerce to generic 500
             spec = ERROR_CATALOG["CDP-SYS-0091"]
             detail = f"Unregistered error code: {code}. Original detail: {detail or ''}"
 
